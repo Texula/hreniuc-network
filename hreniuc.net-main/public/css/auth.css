@@ -1,0 +1,219 @@
+/* --- GLOBAL --- */
+* { box-sizing: border-box; }
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+    background-color: #000; /* Fallback */
+    color: #e0e0e0;
+}
+
+/* --- PAGE TRANSITIONS --- */
+body {
+    opacity: 0; /* Start hidden */
+    animation: fadeInPage 0.6s ease-out forwards; /* Fade in on load */
+}
+
+@keyframes fadeInPage {
+    from { opacity: 0; transform: scale(1.02); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+body.fade-out {
+    animation: none; 
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: scale(0.98);
+    pointer-events: none; 
+}
+
+/* --- CURSOR LIGHT --- */
+.cursor-light {
+    position: fixed;
+    top: 0; left: 0;
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(187, 134, 252, 0.08) 0%, rgba(0,0,0,0) 60%);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 5; /* Above BG (0), Below Glass (10) */
+    mix-blend-mode: screen;
+    transition: opacity 0.3s;
+}
+
+/* Background container for Vanta.js to attach to */
+#vanta-bg {
+    position: absolute;
+    top: -5%; 
+    left: -5%; 
+    width: 110%; 
+    height: 110%;
+    z-index: 0;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* --- SMOKY GLASS CONTAINER --- */
+.glass-container {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+}
+
+.auth-box {
+    width: 90%;
+    max-width: 400px;
+    padding: 40px;
+    border-radius: 16px;
+    text-align: center;
+    
+    /* GLASSMORPHISM MAGIC */
+    background: rgba(20, 20, 20, 0.4); 
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+    
+    position: relative;
+    overflow: hidden;
+}
+
+/* Default Grainy noise overlay (Coarser) */
+.auth-box::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.5;
+}
+
+/* Alternative noise pattern (Finer) - Now used for Register */
+.auth-box.login-skin::before {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilterLogin'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilterLogin)' opacity='0.07'/%3E%3C/svg%3E");
+    opacity: 0.4;
+}
+
+/* --- TYPOGRAPHY & INPUTS --- */
+h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #fff;
+    font-weight: 300;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+
+.input-group {
+    text-align: left;
+    margin-bottom: 10px;
+}
+
+.input-label {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-bottom: 5px;
+    margin-left: 2px;
+    display: block;
+}
+
+input {
+    width: 100%;
+    padding: 14px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    outline: none;
+    transition: all 0.3s ease;
+    font-size: 0.95em;
+    font-family: inherit;
+}
+
+input:focus {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: #bb86fc;
+    box-shadow: 0 0 15px rgba(187, 134, 252, 0.2);
+}
+
+/* Special styling for color input */
+input[type="color"] {
+    padding: 2px;
+    height: 45px;
+    cursor: pointer;
+    background: rgba(0,0,0,0.2);
+}
+
+/* NEW: Verification Code Input Style */
+/* Makes the 6-digit code centered and spaced out */
+#verifyCode {
+    text-align: center;
+    letter-spacing: 8px; /* Space out digits */
+    font-size: 1.5em;    /* Make it big */
+    font-weight: bold;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.5);
+    border-color: var(--accent-color); /* Highlight by default */
+}
+
+/* Text instructions above code input */
+.verify-text {
+    color: #ccc; 
+    margin-bottom: 15px; 
+    font-size: 0.95em;
+    line-height: 1.5;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    margin-top: 20px;
+    border-radius: 8px;
+    border: none;
+    background: linear-gradient(135deg, #bb86fc, #9a67ea);
+    color: #fff;
+    font-weight: bold;
+    font-size: 1em;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(187, 134, 252, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.links {
+    margin-top: 20px;
+    font-size: 0.9em;
+    color: #888;
+}
+
+.links a {
+    color: #bb86fc;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    font-weight: bold;
+}
+
+.links a:hover {
+    opacity: 1;
+    text-decoration: underline;
+}

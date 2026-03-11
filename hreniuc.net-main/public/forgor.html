@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" style="background-color: #000;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forgot Password - hreniuc.net</title>
+    <link rel="stylesheet" href="/css/auth.css">
+    <style>
+        /* Specific adjustments for 9 character code */
+        #verifyCode {
+            text-align: center;
+            letter-spacing: 5px; 
+            font-size: 1.5em;    
+            font-weight: bold;
+            padding: 15px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body style="background-color: #000;">
+
+    <div id="vanta-bg"></div>
+    <div class="cursor-light"></div>
+
+    <div class="glass-container">
+        <div class="auth-box login-skin">
+            <h2>Account Recovery</h2>
+            
+            <!-- Step 1: Email Form -->
+            <form id="emailForm">
+                <p class="verify-text">Enter the email associated with your account to receive a reset code.</p>
+                <input type="email" id="resetEmail" placeholder="Your Email Address" required autocomplete="off">
+                <button type="submit">Send Reset Code</button>
+            </form>
+
+            <!-- Step 2: Code Form (Hidden by default) -->
+            <form id="codeForm" style="display: none;">
+                <p class="verify-text">
+                    We sent a secure 9-character code to your email.<br>Please enter it below:
+                </p>
+                <input type="text" id="verifyCode" placeholder="ABC123XYZ" required maxlength="9">
+                <button type="submit">Verify Code</button>
+            </form>
+
+            <div class="links">
+                <p>Remembered your password silly? <a href="/login">Log In</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+
+    <script>
+        try {
+            VANTA.FOG({
+                el: "#vanta-bg",
+                mouseControls: true, touchControls: true, gyroControls: false,
+                minHeight: 200.00, minWidth: 200.00,
+                highlightColor: 0xbb86fc, midtoneColor: 0x1a1a1a, lowlightColor: 0x000000, baseColor: 0x000000,
+                blurFactor: 0.90, speed: 1.2, zoom: 1.2
+            });
+        } catch(e) {}
+
+        const cursorLight = document.querySelector('.cursor-light');
+        document.addEventListener('mousemove', (e) => {
+            cursorLight.style.left = e.clientX + 'px';
+            cursorLight.style.top = e.clientY + 'px';
+        });
+
+        const ws = new WebSocket("wss://" + window.location.hostname + "/chatws");
+        let pendingEmail = "";
+
+        ws.onmessage = (evt) => {
+            const data = JSON.parse(evt.data);
+            
+            if (data.type === "reset_code_sent") {
+                pendingEmail = data.email;
+                document.getElementById("emailForm").style.display = "none";
+                document.getElementById("codeForm").style.display = "block";
+                document.getElementById("codeForm").style.animation = "fadeInPage 0.5s ease-out";
+                
+                const submitBtn = document.querySelector('#emailForm button[type="submit"]');
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Send Reset Code";
+            } 
+            else if (data.type === "reset_code_verified") {
+                // Code is correct, redirect securely to step 3
+                localStorage.setItem("reset_email", data.email);
+                localStorage.setItem("reset_code", data.code);
+                
+                document.body.classList.add('fade-out');
+                setTimeout(() => {
+                    window.location.href = `/password_change`;
+                }, 500);
+            } 
+            else if (data.type === "error") {
+                alert(data.msg);
+                document.querySelector('#emailForm button[type="submit"]').disabled = false;
+                document.querySelector('#emailForm button[type="submit"]').innerText = "Send Reset Code";
+            }
+        };
+
+        document.getElementById('emailForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Sending...";
+
+            const mail = document.getElementById("resetEmail").value;
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "request_password_reset", email: mail }));
+            } else {
+                alert("Connection not ready. Please refresh.");
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Send Reset Code";
+            }
+        });
+
+        document.getElementById('codeForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const code = document.getElementById("verifyCode").value;
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: "verify_reset_code", email: pendingEmail, code: code }));
+            }
+        });
+    </script>
+</body>
+</html>

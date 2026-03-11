@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <link rel="stylesheet" href="/css/home.css">
+    <link rel="stylesheet" href="/css/editor.css">
+    <style>
+        body { display: block !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Vanta Background -->
+    <div id="vanta-bg"></div>
+    <div class="cursor-light"></div>
+
+    <!-- MOBILE MENU -->
+    <button id="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+    <div id="mobile-menu-overlay" onclick="toggleMobileMenu()"></div>
+    <div id="mobile-sidebar">
+        <div id="mobile-menu-content"></div>
+    </div>
+
+    <!-- HIDDEN PROFILE SCREEN -->
+    <div id="hidden-profile-screen" style="display: none;">
+        <div class="hidden-msg">Profile Hidden :(</div>
+        <button id="return-profile-btn" class="return-btn">Return to my profile</button>
+    </div>
+
+    <!-- STICKY HEADER -->
+    <div id="sticky-header">
+        <div class="header-bubble">
+            <img id="header-profile-img" src="" class="header-avatar" onerror="this.style.display='none'">
+            <span></span>
+        </div>
+    </div>
+
+    <!-- NAVS (Desktop) -->
+    <div class="top-nav-left" id="user-nav"></div>
+    <div class="top-nav" id="auth-nav"></div>
+
+    <!-- MAIN CONTENT -->
+    <div class="center-stage">
+        
+        <!-- 1. HANGING PROFILE CARD -->
+        <div class="profile-card">
+            <div id="owner-tools" class="owner-tools">
+                <span class="you-badge">YOU</span>
+                <button class="edit-btn" onclick="openEditor()">Edit Profile</button>
+            </div>
+            <div class="left-section">
+                <div class="avatar-container">
+                    <img id="main-profile-img" src="" class="profile-img" onerror="this.src='/uploads/default.png'; this.classList.add('default-tint');">
+                </div>
+                <div class="username-pill">@...</div>
+            </div>
+            <div class="card-content">
+                <span class="role-tag">Loading...</span>
+                <h1 class="name-title">Loading...</h1>
+                <p class="bio-text">Loading bio...</p>
+            </div>
+            <div class="action-bubbles">
+                <div class="bubble-wrapper">
+                    <button id="btn-like" class="bubble-btn" onclick="toggleLike()" data-tooltip="Like">🤍</button>
+                    <div id="like-stat-label" class="stat-label">0 LIKES</div>
+                </div>
+                <div class="bubble-wrapper">
+                    <button id="btn-friend" class="bubble-btn" data-tooltip="Add Friend">➕</button>
+                    <div id="friend-stat-label" class="stat-label">0 FRIENDS</div>
+                </div>
+                <div class="bubble-wrapper">
+                    <button id="btn-share" class="bubble-btn" onclick="shareProfile()" data-tooltip="Share Link">🔗</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Social Bar -->
+        <div id="social-links-bar" class="social-bar"></div>
+
+        <!-- 3. Create Post -->
+        <div id="create-post-container" class="create-post-container">
+            <div class="create-post-btn" onclick="window.location.href='/editor'">
+                <span>+</span> Create New Post
+            </div>
+        </div>
+
+        <!-- 4. User's Posts Feed (Grid) -->
+        <div id="posts-feed"></div>
+
+        <!-- 5. Spacer before social section -->
+        <div style="height: 50px;"></div>
+
+        <!-- 6. Friends List (Horizontal) INSIDE CARD -->
+        <div id="friends-section" class="glass-card" style="display:none;">
+            <div class="section-header">
+                <h3>Friends</h3> <!-- No caps by default -->
+                <div class="section-line"></div>
+            </div>
+            <div id="friends-horizontal-list" class="horizontal-scroll-container">
+                <!-- Friends injected here -->
+            </div>
+        </div>
+
+        <!-- 7. Friends Feed (Horizontal) INSIDE CARD -->
+        <div id="friends-feed-section" class="glass-card" style="display:none;">
+            <div class="section-header">
+                <h3>Friends Activity</h3> <!-- No caps by default -->
+                <div class="section-line"></div>
+            </div>
+            <div id="friends-horizontal-feed" class="horizontal-scroll-container">
+                <!-- Feed posts injected here -->
+            </div>
+        </div>
+
+        <div class="content-spacer"></div>
+    </div>
+
+    <!-- MUSIC PLAYER WIDGET -->
+    <div id="music-widget" class="media-bar" style="display:none;">
+        <button id="toggle-widget-btn" class="bar-toggle-btn" onclick="toggleWidgetState()">▼</button>
+        <div class="media-content">
+            <div class="media-artwork-wrapper">
+                <img id="music-artwork" src="" class="media-artwork" onerror="this.style.display='none'">
+            </div>
+            <div class="media-info">
+                <div id="music-title" class="media-title">Loading...</div>
+                <div id="music-artist" class="media-artist">SoundCloud</div>
+            </div>
+            <div class="media-controls">
+                <button class="control-bubble small" onclick="scPrev()" title="Previous"><img src="/assets/last.png"></button>
+                <button class="control-bubble main" id="play-btn" onclick="toggleMusic()"><img src="/assets/play.png"></button>
+                <button class="control-bubble main" id="pause-btn" onclick="toggleMusic()" style="display:none;"><img src="/assets/pause.png"></button>
+                <button class="control-bubble small" onclick="stopMusic()" title="Stop"><img src="/assets/stop.png"></button>
+                <button class="control-bubble small" onclick="scNext()" title="Next"><img src="/assets/next.png"></button>
+            </div>
+            <div class="media-progress">
+                <span id="curr-time">0:00</span>
+                <input type="range" id="seek-bar" value="0" min="0" max="100" step="0.1" oninput="seekMusic(this.value)">
+                <span id="total-time">0:00</span>
+            </div>
+            <div class="media-volume-wrapper">
+                <button class="control-bubble small" onclick="toggleVolumePopup()" title="Volume">
+                    <span style="font-size:1.2em; filter: invert(1);">🔊</span>
+                </button>
+                <div id="volume-popup" class="volume-popup">
+                    <!-- Standard range input, rotated via CSS -->
+                    <input type="range" id="volume-slider" value="30" min="0" max="100" oninput="setVolume(this.value)">
+                </div>
+            </div>
+        </div>
+        <!-- Iframe with valid track but auto_play=false to allow API binding without noise -->
+        <iframe id="sc-widget" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" style="display:none;"></iframe>
+    </div>
+
+    <!-- EDITOR MODAL -->
+    <div id="editor-modal">
+        <div class="editor-card" style="max-width: 600px;">
+            <h2>Edit Profile</h2>
+            <div class="editor-scroll-area">
+                <div class="editor-field"><label>Display Name</label><input type="text" id="edit-display-name"></div>
+                <div class="editor-field"><label>Title / Role</label><input type="text" id="edit-title"></div>
+                <div class="editor-field"><label>Bio</label><textarea id="edit-bio" rows="3"></textarea></div>
+                
+                <div class="editor-field">
+                    <label style="color: var(--accent-color);">🎵 Profile Music (SoundCloud URL)</label>
+                    <input type="text" id="edit-music-url" placeholder="https://soundcloud.com/artist/track#t=1:20">
+                </div>
+
+                <h3 style="margin-top: 20px; color: #bbb; font-size: 1.1em; border-bottom: 1px solid #333; padding-bottom: 5px;">External Links</h3>
+                <div class="social-inputs-grid">
+                    <div class="editor-field"><label>Github</label><input type="text" class="social-input" data-platform="github"></div>
+                    <div class="editor-field"><label>LinkedIn</label><input type="text" class="social-input" data-platform="linkedin"></div>
+                    <div class="editor-field"><label>Instagram</label><input type="text" class="social-input" data-platform="instagram"></div>
+                    <div class="editor-field"><label>Facebook</label><input type="text" class="social-input" data-platform="facebook"></div>
+                    <div class="editor-field"><label>Discord</label><input type="text" class="social-input" data-platform="discord"></div>
+                    <div class="editor-field"><label>YouTube</label><input type="text" class="social-input" data-platform="youtube"></div>
+                    <div class="editor-field"><label>Spotify</label><input type="text" class="social-input" data-platform="spotify"></div>
+                    <div class="editor-field"><label>TikTok</label><input type="text" class="social-input" data-platform="tiktok"></div>
+                    <div class="editor-field"><label>Twitter/X</label><input type="text" class="social-input" data-platform="twitter"></div>
+                    <div class="editor-field"><label>SoundCloud</label><input type="text" class="social-input" data-platform="soundcloud"></div>
+                    <div class="editor-field"><label>Steam</label><input type="text" class="social-input" data-platform="steam"></div>
+                    <div class="editor-field"><label>Reddit</label><input type="text" class="social-input" data-platform="reddit"></div>
+                    <div class="editor-field"><label>BuyMeACoffee</label><input type="text" class="social-input" data-platform="buymeacoffee"></div>
+                </div>
+
+                <div class="editor-field"><label>New Profile Photo</label><input type="file" id="edit-avatar-upload" accept="image/*"></div>
+                <div class="toggle-container">
+                    <span class="toggle-label">Public Profile</span>
+                    <label class="switch"><input type="checkbox" id="edit-visibility"><span class="slider"></span></label>
+                </div>
+            </div>
+            <div class="editor-actions">
+                <button class="cancel-btn" onclick="closeEditor()">Cancel</button>
+                <button class="save-btn" onclick="saveHomeProfile()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+    <script src="https://w.soundcloud.com/player/api.js"></script>
+    <script src="/js/home.js"></script>
+</body>
+</html>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Post</title>
+    <link rel="stylesheet" href="/css/editor.css">
+    <style>
+        /* --- READ ONLY OVERRIDES (Matches Editor UI Exactly) --- */
+        .block-input, .title-input, .summary-input { 
+            pointer-events: none; 
+        }
+        
+        /* Hide interactive elements from the viewer */
+        .image-controls, .block-controls, .delete-block-btn { display: none !important; }
+
+        /* --- JOINED CONTENT BLOCKS --- */
+        /* Dark, readable background for all joined content blocks */
+        #blocks-container {
+            background: rgba(30, 30, 30, 0.6) !important; /* Lightened up from the overly dark version */
+            backdrop-filter: blur(20px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 24px !important;
+            padding: 40px 50px !important;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important;
+            display: flex;
+            flex-direction: column;
+            gap: 15px; /* Spacing between inner blocks */
+        }
+
+        /* Remove individual boxes so they flow together seamlessly inside the container */
+        .content-block {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 5px 0 !important; 
+            margin: 0 !important;
+            animation: none !important;
+        }
+
+        /* Map Text Blocks to Editor Paragraphs */
+        .block-text p { 
+            white-space: pre-wrap; 
+            margin: 0; 
+            min-height: unset;
+            line-height: 1.7;
+        }
+
+        /* Map Subtitles to Editor Chapter Inputs */
+        .block-chapter h2 {
+            font-size: 1.6em; 
+            font-weight: 700; 
+            color: var(--accent-color, #fff); 
+            margin: 20px 0 5px 0; 
+            font-family: inherit;
+        }
+        .content-block:first-child .block-chapter h2 {
+            margin-top: 0; /* Remove top margin if it's the very first block */
+        }
+
+        /* Map Code Elements to Editor Textareas */
+        .block-code pre {
+            font-family: 'Courier New', Courier, monospace;
+            background: rgba(0,0,0,0.5); 
+            padding: 20px; 
+            border-radius: 12px; 
+            color: var(--smart-color); 
+            border: 1px solid rgba(255,255,255,0.05); 
+            margin: 10px 0; 
+            white-space: pre-wrap;
+            font-size: 0.95em;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        /* Meta display resets */
+        #display-title { display: block; white-space: pre-wrap; margin: 0; }
+        #display-summary { display: block; background: transparent; border: none; padding: 0; margin-top: 8px; resize: none; overflow: hidden; }
+
+        .img-caption {
+            width: 100%; text-align: center; color: #888;
+            font-size: 0.9em; font-style: italic; margin-top: 12px;
+        }
+
+        /* Navigation */
+        .back-nav { position: fixed; top: 30px; left: 40px; z-index: 100; }
+        .back-btn { 
+            background: rgba(30,30,30,0.6); backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255,255,255,0.1); color: #fff; 
+            padding: 10px 20px; border-radius: 50px; text-decoration: none; 
+            font-weight: bold; display: flex; align-items: center; gap: 8px; 
+            transition: all 0.3s; 
+        }
+        .back-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(-5px); }
+        
+        /* Post Gallery 3-column Layout */
+        .posts-gallery-grid {
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important;
+            gap: 15px !important;
+        }
+        .post-img-wrapper { height: 130px !important; }
+        
+        .like-action-wrapper {
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+
+        @media (max-width: 768px) {
+            #blocks-container {
+                padding: 25px 20px !important;
+                border-radius: 16px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="vanta-bg"></div>
+    
+    <div class="back-nav"><a href="javascript:history.back()" class="back-btn">← Back</a></div>
+
+    <!-- MAIN FLOATING ACTIONS -->
+    <div class="floating-actions" style="top: 40%;">
+        <div class="like-action-wrapper">
+            <button id="post-like-btn" class="float-btn" onclick="toggleLike()" data-tooltip="Like">🤍</button>
+            <div id="viewer-like-count" class="viewer-like-count">0</div>
+        </div>
+        <button class="float-btn" onclick="alert('Comments coming soon!')" data-tooltip="Comment">💬</button>
+        <button class="float-btn" onclick="sharePost()" data-tooltip="Share">🔗</button>
+    </div>
+
+    <!-- OWNER ACTIONS -->
+    <div id="owner-controls" class="floating-actions" style="display: none; top: 65%;">
+        <div style="height: 1px; width: 40px; background: rgba(255,255,255,0.1); margin: 10px auto;"></div>
+        <button class="float-btn" onclick="editPost()" data-tooltip="Edit Post">✎</button>
+        <button class="float-btn delete-float-btn" onclick="deletePost()" data-tooltip="Delete Post">🗑</button>
+    </div>
+
+    <!-- Using EXACT SAME structure as editor.html so editor.css styles it perfectly -->
+    <div class="editor-container">
+        
+        <!-- Profile Header Block -->
+        <div class="profile-header" style="cursor: pointer;" onclick="goToAuthor()">
+            <div class="avatar-bubble">
+                <img id="author-avatar" src="" class="user-img">
+            </div>
+            <div class="user-info">
+                <div id="author-name" class="user-name">Loading...</div>
+                <div id="post-date" class="user-handle" style="font-weight:normal; color:#aaa;">...</div>
+            </div>
+        </div>
+
+        <!-- Meta Block (Title & Summary) -->
+        <div class="meta-block">
+            <h1 id="display-title" class="title-input"></h1>
+            <div id="display-summary" class="summary-input"></div>
+        </div>
+
+        <!-- Content Blocks Container -->
+        <div id="blocks-container"></div>
+        
+        <!-- Post Footer / Badges -->
+        <div id="post-footer" style="display: flex; justify-content: center; margin-top: 20px; margin-bottom: 20px;"></div>
+        
+        <div style="height: 100px;"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const postId = urlParams.get('id');
+        
+        let authorUsername = null;
+        let currentUser = null;
+        let currentPost = null;
+        let isLiked = false;
+        let likeCount = 0;
+        
+        const ws = new WebSocket("wss://" + window.location.hostname + "/chatws");
+
+        function decodeHtmlSafe(html) {
+            const txt = document.createElement("textarea");
+            txt.innerHTML = html;
+            return txt.value;
+        }
+
+        ws.onopen = () => {
+            const token = localStorage.getItem("chat_token");
+            if (token) {
+                ws.send(JSON.stringify({ type: "login_token", token: token, source: 'viewer' }));
+            }
+            ws.send(JSON.stringify({ type: "get_post_details", id: postId }));
+        };
+
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            
+            if (data.type === "login_success") {
+                currentUser = data.user;
+                checkOwnership();
+            }
+            else if (data.type === "delete_success") {
+                alert("Post deleted.");
+                window.location.href = "/";
+            }
+            else if (data.type === "post_like_update") {
+                if(data.id === postId) {
+                    isLiked = data.hasLiked;
+                    likeCount = data.count;
+                    updateLikeButton();
+                }
+            }
+            else if (data.type === 'post_content') {
+                if(data.error) {
+                    document.querySelector('.editor-container').innerHTML = "<h1 style='text-align:center; color:#fff; margin-top:100px;'>Post Not Found</h1>";
+                    return;
+                }
+
+                currentPost = data.post;
+                isLiked = data.hasLiked;
+                likeCount = data.likeCount || 0;
+                
+                const u = data.author; 
+                authorUsername = u.username;
+
+                checkOwnership();
+                updateLikeButton();
+
+                const color = u.color || '#bb86fc';
+                try {
+                    VANTA.FOG({ 
+                        el: "#vanta-bg", highlightColor: color, 
+                        midtoneColor: 0x1a1a1a, lowlightColor: 0x000000, 
+                        baseColor: 0x000000, blurFactor: 0.90, speed: 1.4, zoom: 1.2 
+                    });
+                    
+                    const root = document.documentElement;
+                    root.style.setProperty('--accent-color', color);
+                    
+                    let c = color.substring(1).split('');
+                    if(c.length==3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+                    c = '0x'+c.join('');
+                    const r = (c>>16)&255, g = (c>>8)&255, b = c&255;
+                    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+                    
+                    if (brightness < 80) root.style.setProperty('--smart-color', '#ffffff');
+                    else root.style.setProperty('--smart-color', color);
+
+                } catch(e){}
+
+                document.getElementById('author-name').innerText = u.display_name || u.username;
+                const dateStr = new Date(currentPost.created_at).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                document.getElementById('post-date').innerText = `@${u.username} • ${dateStr}`;
+                
+                const avatarEl = document.getElementById('author-avatar');
+                const fallbackUrl = `https://ui-avatars.com/api/?name=${u.username}&background=333&color=fff`;
+                if(u.avatar) {
+                    avatarEl.src = `/uploads/${u.avatar}`;
+                    avatarEl.onerror = () => { avatarEl.onerror = null; avatarEl.src = fallbackUrl; };
+                } else { avatarEl.src = fallbackUrl; }
+
+                document.getElementById('display-title').innerText = decodeHtmlSafe(currentPost.title);
+                document.getElementById('display-summary').innerText = decodeHtmlSafe(currentPost.summary);
+                
+                const container = document.getElementById('blocks-container');
+                container.innerHTML = ""; 
+
+                try {
+                    JSON.parse(currentPost.content).forEach(b => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = `content-block block-${b.type}`;
+
+                        if(b.type === 'text') {
+                            const pEl = document.createElement('p');
+                            pEl.className = "block-input block-text";
+                            pEl.innerText = b.value; 
+                            wrapper.appendChild(pEl);
+                        }
+                        else if(b.type === 'chapter') {
+                            const h2 = document.createElement('h2');
+                            h2.innerText = b.value;
+                            wrapper.appendChild(h2);
+                        }
+                        else if(b.type === 'code') {
+                            const pre = document.createElement('pre');
+                            pre.innerText = b.value;
+                            wrapper.appendChild(pre);
+                        }
+                        else if(b.type === 'image') {
+                            const imgContainer = document.createElement('div');
+                            imgContainer.className = "block-image";
+
+                            const img = document.createElement('img');
+                            img.src = b.value; 
+                            img.className = "preview-img";
+                            img.style.display = "block";
+                            
+                            if (b.height) img.style.maxHeight = b.height + "px";
+                            else img.style.maxHeight = "600px";
+
+                            imgContainer.appendChild(img);
+
+                            if (b.caption) {
+                                const captionEl = document.createElement('div');
+                                captionEl.className = "img-caption";
+                                captionEl.innerText = b.caption;
+                                imgContainer.appendChild(captionEl);
+                            }
+                            wrapper.appendChild(imgContainer);
+                        }
+                        else if(b.type === 'gallery') {
+                            const gridId = `gallery-grid-${Date.now()}-${Math.random().toString(36).substring(2)}`;
+                            const gridContainer = document.createElement('div');
+                            gridContainer.id = gridId;
+                            gridContainer.className = "posts-gallery-grid";
+                            gridContainer.innerHTML = "<div style='color:#aaa; text-align:center; padding:20px; width:100%;'>Loading gallery...</div>";
+                            wrapper.appendChild(gridContainer);
+                            
+                            // Ask server to fetch linked posts
+                            ws.send(JSON.stringify({ type: "get_gallery_posts", blockId: gridId, ids: b.value }));
+                        }
+                        container.appendChild(wrapper);
+                    });
+                } catch(err) { console.error("Error parsing blocks", err); }
+            }
+            // --- POPULATING POST GALLERIES INSIDE THE POST ---
+            else if (data.type === "gallery_posts_data") {
+                const container = document.getElementById(data.blockId);
+                if (!container) return;
+                
+                container.innerHTML = "";
+                if (!data.posts || data.posts.length === 0) {
+                    container.innerHTML = "<div style='color:#666; width:100%; text-align:center;'>No posts found.</div>";
+                    return;
+                }
+
+                data.posts.forEach(post => {
+                    const date = new Date(post.created_at).toLocaleDateString();
+                    let imgHtml = "";
+                    let tagsHtml = "";
+                    if (post.tags && post.tags.length > 0) {
+                        tagsHtml = `<div class="hanging-tags">`;
+                        post.tags.forEach(tag => { tagsHtml += `<span class="post-tag tag-${tag.toLowerCase()}">${tag}</span>`; });
+                        tagsHtml += `</div>`;
+                    }
+                    const summaryText = post.summary || "No description available.";
+                    const titleText = post.title || "Untitled";
+                    
+                    if (post.image_url) {
+                        imgHtml = `<div class="post-img-wrapper"><img src="/uploads/${post.image_url}" class="post-thumb" alt="Cover">${tagsHtml}</div>`;
+                    } else {
+                        imgHtml = `<div class="post-img-wrapper" style="background: linear-gradient(45deg, #1a1a1a, #2a2a2a); display:flex; align-items:center; justify-content:center;"><span style="font-size:2em; opacity:0.1;">📄</span>${tagsHtml}</div>`;
+                    }
+
+                    const html = `
+                        <div class="post-card" onclick="window.location.href='/post?id=${post.id}'">
+                            ${imgHtml}
+                            <div class="post-info">
+                                <span class="post-date">${date}</span>
+                                <h3 class="post-title">${titleText}</h3>
+                                <div class="post-snippet">${summaryText}</div>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += html;
+                });
+            }
+        };
+
+        function renderUnlistedBadge() {
+            if (!currentPost || currentPost.is_visible !== false) return;
+            
+            const footer = document.getElementById('post-footer');
+            footer.innerHTML = ""; 
+            
+            const badge = document.createElement("span");
+            const isOwner = currentUser && (currentUser === currentPost.author_username || currentUser === 'admin');
+            
+            badge.style.display = "inline-block";
+            badge.style.padding = "6px 14px";
+            badge.style.borderRadius = "20px";
+            badge.style.fontSize = "0.85em";
+            badge.style.fontWeight = "bold";
+            badge.innerText = "🔒 Unlisted Post";
+            
+            if (isOwner) {
+                badge.style.background = "rgba(255, 165, 0, 0.1)";
+                badge.style.color = "#ffa500";
+                badge.style.border = "1px solid rgba(255, 165, 0, 0.3)";
+            } else {
+                badge.style.background = "rgba(255, 255, 255, 0.03)";
+                badge.style.color = "#666";
+                badge.style.border = "1px solid rgba(255, 255, 255, 0.08)";
+            }
+            
+            footer.appendChild(badge);
+        }
+
+        function updateLikeButton() {
+            const btn = document.getElementById("post-like-btn");
+            const countLabel = document.getElementById("viewer-like-count");
+            
+            if (isLiked) {
+                btn.innerHTML = "❤️";
+                btn.setAttribute("data-tooltip", "Liked!");
+            } else {
+                btn.innerHTML = "🤍";
+                btn.setAttribute("data-tooltip", "Like");
+            }
+            
+            let displayCount = likeCount;
+            if (likeCount >= 1000) {
+                displayCount = (likeCount / 1000).toFixed(1) + "k";
+            }
+            countLabel.innerText = displayCount;
+        }
+
+        function toggleLike() {
+            if(!currentUser) return alert("Please login to like.");
+            ws.send(JSON.stringify({ type: "toggle_post_like", id: postId }));
+        }
+
+        function sharePost() {
+            const url = window.location.href;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.querySelector('[onclick="sharePost()"]');
+                const old = btn.getAttribute("data-tooltip");
+                btn.setAttribute("data-tooltip", "Copied!");
+                setTimeout(() => btn.setAttribute("data-tooltip", old), 2000);
+            });
+        }
+
+        function checkOwnership() {
+            if (currentUser && currentPost && (currentUser === currentPost.author_username || currentUser === 'admin')) {
+                document.getElementById("owner-controls").style.display = "flex";
+            }
+            renderUnlistedBadge();
+        }
+
+        function deletePost() {
+            if (!confirm("Are you sure you want to delete this post?")) return;
+            ws.send(JSON.stringify({ type: "delete_post", id: postId }));
+        }
+
+        function editPost() {
+            window.location.href = `/editor?id=${postId}`;
+        }
+
+        function goToAuthor() { if(authorUsername) window.location.href = `/?u=${authorUsername}`; }
+    </script>
+</body>
+</html>

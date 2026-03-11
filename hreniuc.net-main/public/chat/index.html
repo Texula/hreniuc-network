@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Chatroom</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
+  <link rel="stylesheet" href="/chat/style.css?v=modern_v1">
+</head>
+<body>
+
+<!-- WEBRTC HIDDEN AUDIO ELEMENT -->
+<audio id="remoteAudio" autoplay></audio>
+
+<!-- IMAGE MODAL -->
+<div id="imageModal">
+    <span class="close-modal-btn" onclick="closeImageModal()">×</span>
+    <img id="fullImage">
+    <a id="downloadBtn" href="#" download>Save Image</a>
+</div>
+
+<div class="container">
+    <div id="chatUI" style="display:flex;">
+        <div class="main-area">
+            <!-- UPDATED HEADER -->
+            <div id="chatHeader">
+                <!-- Menu Button (Pill Shape) -->
+                <button id="menuBtn" class="modern-pill-btn icon-only" onclick="toggleSidebar()">☰</button>
+                
+                <span class="header-title">Hreniuc Chat</span>
+
+                <div class="header-actions">
+                     <!-- My Profile Button (Pill Shape) -->
+                     <button onclick="goToMyHome()" class="modern-pill-btn">
+                        <span>👤</span> My Profile
+                     </button>
+                     
+                     <!-- Edit Profile Button (Pill Shape) -->
+                     <button onclick="openProfileModal()" class="modern-pill-btn secondary">
+                        <span>✎</span> Edit
+                     </button>
+                </div>
+            </div>
+
+            <div id="tabsContainer" class="tabs-container"></div>
+            
+            <!-- NEW VOICE CALL BANNER -->
+            <div id="callBanner" class="call-banner">
+                <div class="call-banner-content">
+                    <div class="call-info">
+                        <span id="callStatusText">Voice Channel with <b id="callTargetName">User</b></span>
+                    </div>
+                    <div class="call-controls">
+                        <button id="joinCallBtn" class="modern-pill-btn" style="background:#03dac6;color:#000;" onclick="joinCall()">Join</button>
+                        <button id="leaveCallBtn" class="modern-pill-btn" style="background:#cf6679;color:#fff;display:none;" onclick="leaveCall()">Leave</button>
+                        <button id="closeCallBtn" class="modern-pill-btn secondary icon-only" onclick="closeCallBanner()">✕</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="chat"></div>
+            <div id="newMsgBtn" onclick="scrollToBottom()">↓ New Messages</div>
+        
+            <div class="input-area">
+                <div id="replyBar">
+                    <span id="replyPreview"></span>
+                    <button class="close-reply" onclick="cancelReply()">✕</button>
+                </div>
+                <input type="file" id="chatImgInput" accept="image/*" style="display:none;" onchange="sendImage(this)">
+                
+                <input id="msg" type="text" placeholder="Type a message...">
+                <button onclick="triggerImageUpload()" class="plus-btn" title="Send Image">+</button>
+                <button onclick="send()">Send</button>
+            </div>
+        </div>        
+        
+        <div class="sidebar" id="mySidebar">
+            <button id="closeSidebarBtn" onclick="toggleSidebar()">✕ Close</button>
+
+            <div class="sidebar-section" style="flex: 1; display:flex; flex-direction:column; overflow:hidden; border-bottom: 1px solid #333;">
+                <div class="sidebar-header" id="usersCount">Online: 0</div>
+                <div id="userListContent" class="user-list-scroll"></div>
+            </div>
+            
+            <div class="sidebar-section" style="flex: 1; display:flex; flex-direction:column; overflow:hidden;">
+                <div class="sidebar-header">Friends</div>
+                <div id="friendsListContent" class="user-list-scroll">
+                    <div style="padding:10px; color:#666; font-size:0.8em; text-align:center;">No friends yet :(</div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="sidebarOverlay" onclick="toggleSidebar()"></div>
+    </div>
+</div>
+
+<div id="profileModal">
+    <div class="modal-content">
+        <h3>Edit Profile</h3>
+        <label style="display:block; margin:5px 0;">New Color:</label>
+        <input id="editColor" type="color" style="height:40px; padding:0;">
+        <label style="display:block; margin:10px 0 5px;">Update Email:</label>
+        <input id="editEmail" type="email" placeholder="Enter email address" style="margin:0; width:100%;">
+        <label style="display:block; margin:15px 0 5px;">New Icon:</label>
+        <input id="editAvatar" type="file" accept="image/*" style="font-size: 0.9em;">
+        <div style="margin: 15px 0; text-align:left; background:#2c2c2c; padding:10px; border-radius:6px;">
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input id="allowFriends" type="checkbox" checked style="width:auto;">
+                <span>Allow Friend Requests</span>
+            </label>
+        </div>
+        <button onclick="saveProfile()">Save Changes</button>
+        <button class="close-btn" onclick="doLogout()" style="background:#555; color:white;">Logout</button>
+        <button class="close-btn" onclick="closeProfileModal()">Cancel</button>
+    </div>
+</div>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+<script src="client.js?v=modern_v1"></script>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" style="background-color: #000;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - hreniuc.net</title>
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body style="background-color: #000;">
+
+    <div id="vanta-bg"></div>
+    <div class="cursor-light"></div>
+
+    <div class="glass-container">
+        <div class="auth-box login-skin">
+            <h2>Join</h2>
+            
+            <!-- Step 1: Registration Form -->
+            <form id="registerForm">
+                <input type="text" id="regUsername" placeholder="Username (3-20 chars)" required autocomplete="off">
+                <input type="password" id="regPassword" placeholder="Password" required>
+                <!-- NEW: Confirm Password Field -->
+                <input type="password" id="regConfirmPassword" placeholder="Confirm Password" required>
+                
+                <input type="email" id="regEmail" placeholder="Email (For verification)" required>
+                
+                <div class="input-group">
+                    <label class="input-label">Profile Theme Color (Live Preview)</label>
+                    <input type="color" id="regColor" value="#bb86fc">
+                </div>
+
+                <button type="submit">Sign Up</button>
+            </form>
+
+            <!-- Step 2: Verification Form (Hidden by default) -->
+            <form id="verifyForm" style="display: none;">
+                <p class="verify-text">
+                    We sent a 6-digit code to your email.<br>Please enter it below to verify your account:
+                </p>
+                <input type="text" id="verifyCode" placeholder="123456" required maxlength="6">
+                <button type="submit">Verify Code</button>
+            </form>
+
+            <div class="links">
+                <p>Already have an account? <a id="linkToLogin" href="/login">Log In here</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.fog.min.js"></script>
+
+    <script>
+        let vantaEffect = null;
+
+        // 1. Init Vanta
+        try {
+            vantaEffect = VANTA.FOG({
+                el: "#vanta-bg",
+                mouseControls: true, touchControls: true, gyroControls: false,
+                minHeight: 200.00, minWidth: 200.00,
+                highlightColor: 0xbb86fc, // Default
+                midtoneColor: 0x2c2c2c,   
+                lowlightColor: 0x121212,  
+                baseColor: 0x000000,
+                blurFactor: 0.90,         
+                speed: 1.5,
+                zoom: 1.2
+            });
+        } catch(e) { console.warn("Vanta JS failed to load", e); }
+
+        // NEW: Real-time Color Preview Listener
+        const colorInput = document.getElementById('regColor');
+        colorInput.addEventListener('input', (e) => {
+            const hex = e.target.value;
+            // Convert hex string to hex number for Three.js/Vanta (e.g., "#ff0000" -> 0xff0000)
+            const hexNum = parseInt(hex.replace('#', '0x'), 16);
+            
+            if (vantaEffect) {
+                vantaEffect.setOptions({
+                    highlightColor: hexNum
+                });
+            }
+        });
+
+        const cursorLight = document.querySelector('.cursor-light');
+        const vantaBg = document.getElementById('vanta-bg');
+        let parallaxEnabled = true;
+
+        document.addEventListener('mousemove', (e) => {
+            cursorLight.style.left = e.clientX + 'px';
+            cursorLight.style.top = e.clientY + 'px';
+            if(parallaxEnabled && window.innerWidth > 768) {
+                const moveX = (e.clientX - window.innerWidth / 2) / 60; 
+                const moveY = (e.clientY - window.innerHeight / 2) / 60;
+                vantaBg.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTarget = urlParams.get('redirect') || '/chat';
+        
+        const loginLink = document.getElementById("linkToLogin");
+        loginLink.href = `/login?redirect=${encodeURIComponent(redirectTarget)}`;
+        loginLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            parallaxEnabled = false;
+            document.body.classList.add('fade-out');
+            setTimeout(() => { window.location.href = loginLink.href; }, 500);
+        });
+
+        // --- WEBSOCKET LOGIC ---
+        const ws = new WebSocket("wss://" + window.location.hostname + "/chatws");
+        let pendingEmail = "";
+
+        ws.onmessage = (evt) => {
+            const data = JSON.parse(evt.data);
+            
+            if (data.type === "verification_sent") {
+                pendingEmail = data.email;
+                document.getElementById("registerForm").style.display = "none";
+                document.getElementById("verifyForm").style.display = "block";
+                document.getElementById("verifyForm").style.animation = "fadeInPage 0.5s ease-out";
+            } 
+            else if (data.type === "register_success") {
+                alert("Account verified! Please login.");
+                parallaxEnabled = false;
+                document.body.classList.add('fade-out');
+                setTimeout(() => {
+                    window.location.href = `/login?redirect=${encodeURIComponent(redirectTarget)}`;
+                }, 500);
+            } 
+            else if (data.type === "error") {
+                alert(data.msg);
+            }
+        };
+
+        // SUBMIT REGISTRATION (Step 1)
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Sending Code...";
+            
+            const u = document.getElementById("regUsername").value;
+            const p = document.getElementById("regPassword").value;
+            const pConfirm = document.getElementById("regConfirmPassword").value; // NEW
+            const mail = document.getElementById("regEmail").value;
+            const col = document.getElementById("regColor").value;
+
+            // Client-side Password Match Check
+            if (p !== pConfirm) {
+                alert("Passwords do not match.");
+                return;
+            }
+
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ 
+                    type: "register", 
+                    user: u, 
+                    password: p, 
+                    email: mail, 
+                    color: col 
+                }));
+            } else {
+                alert("Connection not ready. Please refresh.");
+            }
+        });
+
+        // SUBMIT CODE (Step 2)
+        document.getElementById('verifyForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const code = document.getElementById("verifyCode").value;
+            if(ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ 
+                    type: "verify_email", 
+                    email: pendingEmail, 
+                    code: code 
+                }));
+            }
+        });
+    </script>
+</body>
+</html>
